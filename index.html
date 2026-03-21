@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OLD 09 | VK Roulette</title>
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <style>
+        :root {
+            --neon-blue: #00d2ff;
+            --neon-purple: #9d50bb;
+            --gold: #f1c40f;
+            --dark-bg: #090a0f;
+        }
+
+        body {
+            background: radial-gradient(circle at center, #1b2735 0%, var(--dark-bg) 100%);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        input {
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            border-radius: 5px;
+            border: 2px solid var(--neon-blue);
+            background: rgba(0,0,0,0.5);
+            color: white;
+            outline: none;
+            width: 250px;
+            transition: 0.3s;
+            text-align: center;
+        }
+
+        input:focus { box-shadow: 0 0 15px var(--neon-blue); }
+
+        .wheel-box {
+            position: relative;
+            width: 420px;
+            height: 420px;
+            margin: 20px 0;
+        }
+
+        #wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            border: 8px solid #1a1f29;
+            transition: transform 6s cubic-bezier(0.2, 0, 0.1, 1);
+            background: #0f1218;
+        }
+
+        .sector { position: absolute; width: 100%; height: 100%; }
+        .sector-bg { position: absolute; width: 100%; height: 100%; clip-path: polygon(50% 50%, 50% 0, 92% 0); }
+        .sector-content {
+            position: absolute; top: 40px; left: 50%; width: 100px; margin-left: -50px;
+            text-align: center; transform-origin: center 170px; display: flex; flex-direction: column;
+        }
+
+        .pointer {
+            position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent;
+            border-top: 35px solid var(--gold); z-index: 100;
+        }
+
+        .spin-btn {
+            padding: 15px 50px; font-size: 1.2rem; font-weight: bold; text-transform: uppercase;
+            color: white; background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 0 15px rgba(0, 210, 255, 0.3);
+            transition: 0.3s;
+        }
+
+        .spin-btn:hover { transform: scale(1.05); }
+        .spin-btn:disabled { opacity: 0.3; transform: scale(1); cursor: not-allowed; }
+
+        #result-box {
+            margin-top: 20px; text-align: center; display: none;
+            background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; border: 1px solid var(--neon-blue);
+        }
+
+        .confirm-btn {
+            background: #27ae60; padding: 12px 25px; color: white; text-decoration: none;
+            border-radius: 5px; font-weight: bold; display: inline-block; margin-top: 15px;
+            transition: 0.3s;
+        }
+        .confirm-btn:hover { background: #2ecc71; }
+    </style>
+</head>
+<body>
+
+    <div class="input-group" id="setup">
+        <h2 style="color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue);">ВВЕДИ ИГРОВОЙ НИК</h2>
+        <input type="text" id="playerNick" placeholder="Tag_King" maxlength="24">
+    </div>
+
+    <div class="wheel-box">
+        <div class="pointer"></div>
+        <div id="wheel"></div>
+    </div>
+
+    <button id="spinBtn" class="spin-btn">ИСПЫТАТЬ УДАЧУ</button>
+
+    <div id="result-box">
+        <div id="result-text" style="font-size: 1.5rem; color: var(--gold); font-weight: bold;"></div>
+        <p style="font-size: 0.8rem; color: #888; margin: 10px 0;">Обязательно сделай скриншот выигрыша!</p>
+        <a id="sendVk" href="#" target="_blank" class="confirm-btn">ПОДТВЕРДИТЬ И ОТПРАВИТЬ</a>
+    </div>
+
+    <script>
+        vkBridge.send("VKWebAppInit");
+
+        const wheel = document.getElementById('wheel');
+        const btn = document.getElementById('spinBtn');
+        const nickInput = document.getElementById('playerNick');
+        const resultBox = document.getElementById('result-box');
+        const resultText = document.getElementById('result-text');
+        const sendVkBtn = document.getElementById('sendVk');
+
+        const secretKey = "OLD09_SECURE_V3";
+        const groupID = "236777096";
+
+        // --- ФУНКЦИЯ ПОЛУЧЕНИЯ РЕАЛЬНОГО ВРЕМЕНИ ---
+        async function getRealDate() {
+            try {
+                const response = await fetch('https://worldtimeapi.org/api/timezone/Europe/Moscow');
+                const data = await response.json();
+                return new Date(data.datetime).toDateString();
+            } catch (e) {
+                // Если сервис упал, берем время с ПК (как запасной вариант)
+                return new Date().toDateString();
+            }
+        }
+
+        const prizes = [
+            { val: "600 000", color: "#1a1a2e" }, { val: "500 000", color: "#16212e" },
+            { val: "400 000", color: "#0f1722" }, { val: "300 000", color: "#16212e" },
+            { val: "200 000", color: "#0f1722" }, { val: "150 000", color: "#16212e" },
+            { val: "70 000",  color: "#0f1722" }, { val: "30 000",  color: "#16212e" }
+        ];
+
+        prizes.forEach((p, i) => {
+            const sector = document.createElement('div');
+            sector.className = 'sector';
+            sector.style.transform = `rotate(${i * 45}deg)`;
+            sector.innerHTML = `<div class="sector-bg" style="background-color: ${p.color}"></div>
+                <div class="sector-content" style="transform: rotate(22.5deg)">
+                    <span style="font-weight:900; font-size: 0.9rem;">${p.val}</span>
+                    <span style="font-size: 1.5rem;">💰</span>
+                </div>`;
+            wheel.appendChild(sector);
+        });
+
+        let rotation = 0;
+
+       // Ссылка на твою таблицу (пусть лежит здесь, выше клика)
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbzDAkpEBQk1Z367-07ooPKlMZL0Wj72H6UiH6TZBRmZX6iVi6uXQprnWkv-E3amD2M/exec';
+
+        // Делаем клик асинхронным
+        btn.addEventListener('click', async () => {
+            const nick = nickInput.value.trim();
+            if (!nick) {
+                alert("Сначала введи свой игровой ник!");
+                return;
+            }
+
+            btn.disabled = true;
+            nickInput.disabled = true;
+
+            // --- ОТПРАВКА ДАННЫХ В БАЗУ (Вставляем прямо сюда!) ---
+            fetch(scriptURL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                cache: 'no-cache',
+                body: JSON.stringify({ 
+                    nick: nick, 
+                    date: new Date().toLocaleDateString('ru-RU'), 
+                    prize: "SPIN_ATTEMPT" 
+                })
+            });
+            // -----------------------------------------------------
+
+            const rand = Math.random() * 100;
+            let winIndex = 0;
+
+            if (rand <= 5) winIndex = 0;
+            else if (rand <= 10) winIndex = 1;
+            else if (rand <= 30) winIndex = 2 + Math.floor(Math.random() * 3);
+            else winIndex = 5 + Math.floor(Math.random() * 3);
+
+            const targetAngle = (360 - (winIndex * 45)) - 22.5;
+            rotation += (360 * 6) + (targetAngle - (rotation % 360) + 360) % 360;
+            wheel.style.transform = `rotate(${rotation}deg)`;
+
+            // Сразу получаем реальную дату, пока крутится колесо
+            const todayDate = await getRealDate();
+
+            setTimeout(() => {
+                const prize = prizes[winIndex].val;
+                
+                let str = nick + prize + secretKey;
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                    hash |= 0;
+                }
+                const securityCode = Math.abs(hash).toString(16).toUpperCase();
+
+                resultText.innerHTML = `ВЫИГРЫШ: ${prize} $<br><span style="color: #00d2ff; font-size: 1rem; text-shadow: 0 0 5px #00d2ff;">CODE: ${securityCode}</span>`;
+                resultBox.style.display = 'block';
+
+                const textMsg = `🎰 РЕЗУЛЬТАТ РУЛЕТКИ OLD 09\n\n👤 Игрок: ${nick}\n💰 Приз: ${prize} $\n🔑 Код: ${securityCode}`;
+                const message = encodeURIComponent(textMsg);
+                sendVkBtn.href = `https://vk.me/public${groupID}?ref=wheel&message=${message}`;
+                
+                // Сохраняем локально, чтобы кнопка сразу стала "ЗАВТРА"
+                localStorage.setItem('old09_spin_v3', todayDate);
+            }, 6000);
+        });
+
+        // Проверка при загрузке страницы (тоже через реальное время)
+        async function checkLimit() {
+            const todayDate = await getRealDate();
+            if (localStorage.getItem('old09_spin_v3') === todayDate) {
+                btn.disabled = true;
+                btn.innerText = "ЗАВТРА";
+                nickInput.style.display = 'none';
+                document.querySelector('#setup h2').innerText = "ПРИХОДИ ЗАВТРА!";
+            }
+        }
+        checkLimit();
+    </script>
+</body>
+</html>
