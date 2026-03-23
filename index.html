@@ -170,7 +170,6 @@
        // Ссылка на твою таблицу (пусть лежит здесь, выше клика)
         const scriptURL = 'https://script.google.com/macros/s/AKfycbzDAkpEBQk1Z367-07ooPKlMZL0Wj72H6UiH6TZBRmZX6iVi6uXQprnWkv-E3amD2M/exec';
 
-        // Делаем клик асинхронным
         btn.addEventListener('click', async () => {
             const nick = nickInput.value.trim();
             if (!nick) {
@@ -181,38 +180,40 @@
             btn.disabled = true;
             nickInput.disabled = true;
 
-            // --- ОТПРАВКА ДАННЫХ В БАЗУ (Вставляем прямо сюда!) ---
+            // 1. СРАЗУ ОПРЕДЕЛЯЕМ ШАНСЫ И ВЫИГРЫШ
+            // ТУТ МЕНЯЙ ШАНСЫ (сейчас: 5% на 600к, 5% на 500к и т.д.)
+            const rand = Math.random() * 100;
+            let winIndex = 0;
+
+            if (rand <= 2) winIndex = 0;      // 600 000 (Шанс 2%)
+            else if (rand <= 5) winIndex = 1; // 500 000 (Шанс 3%)
+            else if (rand <= 25) winIndex = 2 + Math.floor(Math.random() * 3); // 400-200к
+            else winIndex = 5 + Math.floor(Math.random() * 3); // Остальное
+
+            const prizeValue = prizes[winIndex].val; // Сумма выигрыша
+            const todayDate = new Date().toLocaleDateString('ru-RU'); // Дата для кода и таблицы
+
+            // 2. ОТПРАВКА В ТАБЛИЦУ (В колонку Price)
             fetch(scriptURL, {
                 method: 'POST',
                 mode: 'no-cors', 
                 cache: 'no-cache',
                 body: JSON.stringify({ 
                     nick: nick, 
-                    date: new Date().toLocaleDateString('ru-RU'), 
-                    prize: "SPIN_ATTEMPT" 
+                    date: todayDate, 
+                    price: prizeValue // Ключ "price" запишет данные в колонку Price
                 })
             });
-            // -----------------------------------------------------
 
-            const rand = Math.random() * 100;
-            let winIndex = 0;
-
-            if (rand <= 5) winIndex = 0;
-            else if (rand <= 10) winIndex = 1;
-            else if (rand <= 30) winIndex = 2 + Math.floor(Math.random() * 3);
-            else winIndex = 5 + Math.floor(Math.random() * 3);
-
+            // 3. ЗАПУСК АНИМАЦИИ КОЛЕСА
             const targetAngle = (360 - (winIndex * 45)) - 22.5;
             rotation += (360 * 6) + (targetAngle - (rotation % 360) + 360) % 360;
             wheel.style.transform = `rotate(${rotation}deg)`;
 
-            // Сразу получаем реальную дату, пока крутится колесо
-            const todayDate = await getRealDate();
-
+            // 4. ОЖИДАНИЕ ОСТАНОВКИ И ВЫВОД РЕЗУЛЬТАТА
             setTimeout(() => {
-                const prize = prizes[winIndex].val;
-                
-                let str = nick + prize + secretKey;
+                // ГЕНЕРАЦИЯ УНИКАЛЬНОГО КОДА (Ник + Сумма + Дата + Ключ)
+                let str = nick + prizeValue + todayDate + secretKey;
                 let hash = 0;
                 for (let i = 0; i < str.length; i++) {
                     hash = ((hash << 5) - hash) + str.charCodeAt(i);
@@ -220,16 +221,17 @@
                 }
                 const securityCode = Math.abs(hash).toString(16).toUpperCase();
 
-                resultText.innerHTML = `ВЫИГРЫШ: ${prize} $<br><span style="color: #00d2ff; font-size: 1rem; text-shadow: 0 0 5px #00d2ff;">CODE: ${securityCode}</span>`;
+                // ВЫВОД В ОКНО (Добавили ник победителя)
+                resultText.innerHTML = `ПОБЕДИТЕЛЬ: ${nick}<br>ВЫИГРЫШ: ${prizeValue}<br><span style="color: #00d2ff; font-size: 1rem;">CODE: ${securityCode}</span>`;
                 resultBox.style.display = 'block';
 
-                const textMsg = `🎰 РЕЗУЛЬТАТ РУЛЕТКИ OLD 09\n\n👤 Игрок: ${nick}\n💰 Приз: ${prize} $\n🔑 Код: ${securityCode}`;
-                const message = encodeURIComponent(textMsg);
-                sendVkBtn.href = `https://vk.me/public${groupID}?ref=wheel&message=${message}`;
+                // ССЫЛКА ДЛЯ ВК
+                const textMsg = `🎰 РУЛЕТКА OLD 09\n👤 ПОБЕДИТЕЛЬ: ${nick}\n💰 ВЫИГРЫШ: ${prizeValue}\n🔑 Код: ${securityCode}`;
+                sendVkBtn.href = `https://vk.me/public${groupID}?ref=wheel&message=${encodeURIComponent(textMsg)}`;
                 
-                // Сохраняем локально, чтобы кнопка сразу стала "ЗАВТРА"
+                // Сохраняем в память, что игрок сегодня уже крутил
                 localStorage.setItem('old09_spin_v3', todayDate);
-            }, 6000);
+            }, 6000); 
         });
 
         // Проверка при загрузке страницы (тоже через реальное время)
