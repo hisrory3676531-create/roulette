@@ -117,8 +117,11 @@
 
     <div id="result-box">
         <div id="result-text" style="font-size: 1.5rem; color: var(--gold); font-weight: bold;"></div>
-        <p style="font-size: 0.8rem; color: #888; margin: 10px 0;">Обязательно сделай скриншот выигрыша!</p>
-        <a id="sendVk" href="#" target="_blank" class="confirm-btn">ПОДТВЕРДИТЬ И ОТПРАВИТЬ</a>
+        <p style="font-size: 0.9rem; color: #fff; margin: 10px 0; background: #e74c3c; padding: 5px; border-radius: 3px;">
+            ⚠️ СКОПИРУЙ КОД НИЖЕ И ОТПРАВЬ ЕГО БОТУ В ЧАТ!<br>
+            (Скриншот выигрыша обязателен)
+        </p>
+        <a id="sendVk" href="#" target="_blank" class="confirm-btn">ПОДТВЕРДИТЬ И ПЕРЕЙТИ В ЧАТ</a>
     </div>
 
     <script>
@@ -215,15 +218,14 @@
             rotation += (360 * 6) + (targetAngle - (rotation % 360) + 360) % 360;
             wheel.style.transform = `rotate(${rotation}deg)`;
 
-            // 4. РЕЗУЛЬТАТ
+            // 4. РЕЗУЛЬТАТ (ОБНОВЛЕННЫЙ БЛОК)
             setTimeout(() => {
-                resultText.innerHTML = `ПОБЕДИТЕЛЬ: ${nick}<br>ВЫИГРЫШ: ${prizeValue}<br><span style="color: #00d2ff; font-size: 1rem;">CODE: ${securityCode}</span>`;
+                resultText.innerHTML = `ПОБЕДИТЕЛЬ: ${nick}<br>ВЫИГРЫШ: ${prizeValue}<br><span style="color: #00d2ff; font-size: 1.2rem; border: 1px dashed #00d2ff; padding: 5px; display: inline-block; margin-top: 10px;">КОД: ${securityCode}</span>`;
                 resultBox.style.display = 'block';
 
-                const textMsg = `🎰 РУЛЕТКА OLD 09\n👤 ПОБЕДИТЕЛЬ: ${nick}\n💰 ВЫИГРЫШ: ${prizeValue}\n🔑 Код: ${securityCode}`;
-                sendVkBtn.href = `https://vk.me/public${groupID}?ref=wheel&message=${encodeURIComponent(textMsg)}`;
+                // Теперь в message подставляем ТОЛЬКО КОД для умного чекера бота
+                sendVkBtn.href = `https://vk.me/public${groupID}?ref=wheel&message=${encodeURIComponent(securityCode)}`;
                 
-                // Сохраняем лимит (версия v4)
                 localStorage.setItem('old09_spin_v4', todayDate);
             }, 6000); 
         });
